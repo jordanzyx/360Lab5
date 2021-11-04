@@ -22,9 +22,16 @@ DIR   *dp;
 #define BLKSIZE  1024
 #define NMINODE   128
 #define NPROC       2
+#define NFD        16
 
 #define DIR_MODE 0x41ED
 #define FILE_MODE 0x81A4
+
+//MODES FOR FILES WHEN WE OPEN
+#define READ 0
+#define WRITE 1
+#define READ_WRITE 2
+#define APPEND 3
 
 #define SUPER_USER 0
 
@@ -38,13 +45,23 @@ typedef struct minode{
   struct mntable *mptr;  // for level-3
 }MINODE;
 
+// Open file table
+typedef struct oft
+{
+    int mode;     // mode of opened file
+    int refCount; // number of PROCs sharing this instance
+    MINODE *mptr; // pointer to minode of file
+    int offset;   // byte offset for R|W
+} OFT;
+
 typedef struct proc{
   struct proc *next;
   int          pid;      // process ID  
   int          uid;      // user ID
   int          gid;
   int          status;
-  MINODE      *cwd;      // CWD directory pointer  
+  MINODE      *cwd;      // CWD directory pointer
+  OFT *fd[NFD];          // list of open files
 }PROC;
 
 #endif

@@ -28,5 +28,11 @@ int func_stat(char *fileName);
 int func_chmod(char *path);
 int func_utime(char *path);
 
+//open-close-lseek
+int func_open(char *path, int mode);
+int func_close(int fd);
+int func_lseek(int fd, int pos);
+
+
 
 #endif //INC_360LAB5_FUNC_H
