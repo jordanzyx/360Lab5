@@ -39,104 +39,137 @@ int func_open(char *path, int mode){
     else dev = running->cwd->dev;
 
     //Get the INO for this path and make sure that file is around
-    int ino = getino(pathname);
+    int ino = getino(path);
 
+    //Create a new file if we do not have one
     if (ino == -1) {
-        // ino must be created, does not exist
+        // Make sure that the parent exists
+        char parent[256], buf[256];
 
-        // find parent ino of file to be created
-        char parent[BLKSIZE], buf[BLKSIZE];
-        strcpy(buf, pathname);
+        //Copy path into buffer since dirname destroys strings
+        strcpy(buf, path);
         strcpy(parent, dirname(buf));
-        printf("PARENT: %s\n", parent);
+
+        //Make sure the parent exists now
         int pino = getino(parent);
         if (pino == -1) {
-            printf("error finding parent inode (open file)\n");
+            printf("Error: Could not find parent for %s\n",path);
             return -1;
         }
-        MINODE *pmip = iget(dev, pino);
 
-        int r = func_creat(pathname);
-        ino = getino(pathname);
+        //Create the file
+        func_creat(path);
 
+        //Confirm the file was created
+        ino = getino(path);
         if (ino == -1) {
             // if ino still failed, we probably have bigger problems
-            printf("error: new ino allocation failed for open\n");
+            printf("\n");
             return -1;
         }
     }
 
-
-    printf("MIDDLE OPEN: running->cwd->ino, address: %d\t%x\n", running->cwd->ino, running->cwd);
-
+    //Get the memory INODE so we can validate other information about this file
     MINODE *mip = iget(dev, ino);
 
-    printf("debug mode: %d\n", mip->ino);
-
+    //Confirm that the file is a regular file
     if (!S_ISREG(mip->INODE.i_mode)) {
-        printf("error: not a regular file\n");
+        printf("Error Opening: File is not regular\n");
         return -1;
     }
 
-
-    // go through all open files-- check if anything is open with incompatible mode
+    // Check the other open files and make sure that there is not another instance of this file opened that is not strictly READ
     for (int i = 0; i < NFD; i++) {
-        if (running->fd[i] == NULL)
-            break;
-        if (running->fd[i]->mptr == mip) {
-            if (mode != 0) {
-                printf("error: already open with incompatible mode\n");
-                return -1;
-            }
-        }
+        //Skip over OFT we are viewing if it is null
+        if (running->fd[i] == NULL)continue;
+        //Skip if its Memory INODE is not identical
+        if (running->fd[i]->mptr != mip)continue;
+        //Skip if it is in read mode
+        if (running->fd[i]->mode == 0)continue;
+
+        //Cancel this operation because we have conflicting modes
+        printf("Error opening %s because there is already and instance of this file open with mode %d\n",path,running->fd[i]->mode);
     }
 
+    //Create a new OFT to store in our table
     OFT *oftp = (OFT *)malloc(sizeof(OFT));
+
+    //Prepare the mode & basic information for this OFT
     oftp->mode = mode;
     oftp->refCount = 1;
     oftp->mptr = mip;
 
-    switch(mode) {
-        case 0:                 // read, offset = 0
-            oftp->offset = 0;
-            break;
-        case 1:                 // write, truncate file to 0 size
-            inode_truncate(mip);
-            oftp->offset = 0;
-            break;
-        case 2:                 // read/write, don't truncate file
-            oftp->offset = 0;
-            break;
-        case 3:                 // append
-            oftp->offset = mip->INODE.i_size;
-            break;
-        default:                // shouldn't ever get here based on first check, but just in case
-            printf("error: invalid mode\n");
-            return -1;
-    }
+    //Free inodes if we are using WRITE because we are completely writing over this file
+    if(mode == WRITE)freeINodes(mip);
 
-    int returned_fd = -1;
-    // might be redundant-- same loop earlier, could be refactored to find NULL fd[i] earlier
+    //Adjust offset based on mode
+    if(mode == READ || mode == WRITE || mode == READ_WRITE)oftp->offset = 0;
+    if(mode == APPEND)oftp->offset = mip->INODE.i_size;
+
+    int fdGiven = -1;
+
+    //Find the first open FD slot
     for (int i = 0; i < NFD; i++) {
-        if (running->fd[i] == NULL) {
-            running->fd[i] = oftp;
-            returned_fd = i;
-            break;
-        }
+        //Skip fd slots that are taken
+        if(running->fd[i] != NULL)continue;
+
+        //Store on the process
+        running->fd[i] = oftp;
+
+        //Store the fd
+        fdGiven = i;
+
+        //Exit out of loop
+        break;
     }
 
-    if (mode != 0) { // not read, mtime
-        mip->INODE.i_mtime = time(NULL);
-    }
-    mip->INODE.i_atime = time(NULL);
+    //Adjust access time
+    mip->INODE.i_atime = time(0L);
+
+    //Adjust modify time if we are not looking at READ
+    if (mode != READ)mip->INODE.i_mtime = time(0L);
+
+    //Mark as dirty and write to disk
     mip->dirty = 1;
     iput(mip);
 
-    return returned_fd;
+    return fdGiven;
 }
 
 int func_close(int fd){
+    //Make sure that the file descriptor given is within range
+    if( !(fd >= 0 && fd < NFD)){
+        printf("Error closing: Invalid file descriptor \n");
+        return -1;
+    }
 
+    // Confirm there is an OFT & the fd supplied
+    if (running->fd[fd] == NULL) {
+        printf("Error closing: No OFT found @ fd %d\n",fd);
+        return -1;
+    }
+
+    //Grab OFT & index
+    OFT *oftp = running->fd[fd];
+
+    //Clear it from the table
+    running->fd[fd] = 0;
+
+    //Decrease references
+    oftp->refCount--;
+
+    //If the references are over 0 exit
+    if (oftp->refCount > 0)return 0;
+
+    //Push the changes back to disk
+    MINODE *mip = oftp->mptr;
+    mip->dirty = 1;
+    iput(mip);
+
+    //Destroy the pointer we allocated for this information
+    free(oftp);
+
+    return 0;
 }
 
 int func_lseek(int fd, int pos){

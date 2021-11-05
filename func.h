@@ -33,6 +33,11 @@ int func_open(char *path, int mode);
 int func_close(int fd);
 int func_lseek(int fd, int pos);
 
+//read-write-cat-copy
+int func_read(int fd,char* buffer, int bytes);
+int func_write(int fd, char* buffer, int byteCount);
+int func_cat(char *file);
+int func_cp(char* source, char* destination);
 
 
 #endif //INC_360LAB5_FUNC_H
