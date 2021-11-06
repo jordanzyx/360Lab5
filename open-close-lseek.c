@@ -25,7 +25,6 @@ extern int nblocks, ninodes, bmap, imap, iblk;
 
 extern char line[128], cmd[32], pathname[128];
 
-
 int func_open(char *path, int mode){
 
     //Validate that the mode for opening is valid
@@ -133,6 +132,8 @@ int func_open(char *path, int mode){
     mip->dirty = 1;
     iput(mip);
 
+    printf("Opened %s with fd: %d\n",path,fdGiven);
+
     return fdGiven;
 }
 
@@ -170,6 +171,31 @@ int func_close(int fd){
     free(oftp);
 
     return 0;
+}
+
+int func_pfd(){
+    //Loop through the open files and print out their information
+    printf("-- Open File Descriptors --\n");
+    for (int i = 0; i < NFD; ++i) {
+        //Skip if the slot is empty
+        if(running->fd[i] == NULL)continue;
+
+        //Get the oft
+        OFT* oft = running->fd[i];
+
+        //Create a string for mode
+        char* mode = "";
+        if(oft->mode == READ)mode = "Read";
+        if(oft->mode == WRITE)mode = "Write";
+        if(oft->mode == READ_WRITE)mode = "Read_Write";
+        if(oft->mode == APPEND)mode = "Append";
+
+
+        //Print info for the file descriptor
+        printf("fd: %d, mode: %s\n",i, mode);
+    }
+
+    return -1;
 }
 
 int func_lseek(int fd, int pos){

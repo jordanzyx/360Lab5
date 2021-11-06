@@ -167,6 +167,25 @@ int main(int argc, char *argv[ ])
         func_readlink(pathname);
     }
     else if (strcmp(cmd, "utime") == 0)func_utime(pathname);
+    else if (strcmp(cmd, "open") == 0){
+        int mode = -1;
+        sscanf(line, "%s %s %d",cmd,pathname,&mode);
+        func_open(pathname,mode);
+    }
+    else if (strcmp(cmd, "write") == 0){
+        func_write_cmd();
+    }
+    else if (strcmp(cmd, "pfd") == 0)func_pfd();
+    else if (strcmp(cmd, "cat") == 0)func_cat(pathname);
+    else if (strcmp(cmd, "close") == 0){
+        int fd = -1;
+        sscanf(line, "%s %d",cmd,&fd);
+        func_close(fd);
+    }
+    else if (strcmp(cmd, "cp") == 0){
+        sscanf(line,"%s %s %s",cmd, pathname,pathname2);
+        func_cp(pathname,pathname2);
+    }
     else if (strcmp(cmd, "quit")==0){
         quit();
         break;
