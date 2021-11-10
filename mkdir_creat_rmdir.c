@@ -24,6 +24,13 @@ extern int nblocks, ninodes, bmap, imap, iblk;
 
 extern char line[128], cmd[32], pathname[128];
 
+/**
+ *
+ * Prepares a INODE for a directory being created in our file system
+ *
+ * @param ip pointer to the inode we are preparing
+ * @param bno block number for the first data block we are giving this directory
+ */
 void prepareInode(INODE *ip, int bno){
     ip->i_mode = DIR_MODE;       // OR 040755: DIR type and permissions
     ip->i_uid = running->uid;    // Owner uid
@@ -41,6 +48,14 @@ void prepareInode(INODE *ip, int bno){
     }
 }
 
+/**
+ *
+ * Creates the '.' entry inside of a directory we just created, used for pointing to itsself
+ * This is used in something like './a.out
+ *
+ * @param dp pointer to the directory
+ * @param ino inode of the directory we just made
+ */
 void prepareSelfEntry(DIR *dp, int ino){
     //We set this to the ino of the directory we just made
     dp->inode = ino;
@@ -53,6 +68,14 @@ void prepareSelfEntry(DIR *dp, int ino){
     dp->name[0] = '.';
 }
 
+/**
+ *
+ * Prepares a parent entry for an entry we created '..'
+ * This is used in something like 'cd ..'
+ *
+ * @param dp
+ * @param parent
+ */
 void prepareParentEntry(DIR *dp,MINODE* parent){
     //Set to parent ino because thats where the entry goes
     dp->inode = parent->ino;
@@ -66,6 +89,14 @@ void prepareParentEntry(DIR *dp,MINODE* parent){
     dp->name[1] = '.';
 }
 
+/**
+ *
+ * Helper function for creating a directory. Saves space within #func_mkdir
+ *
+ * @param parent this is the Memory INODE of the directory we are putting our new directory in
+ * @param dirName name of the directory we are creating
+ * @return 0 on success
+ */
 int mkdir_helper(MINODE* parent, char* dirName){
     //Allocate space for a new inode & block
     int ino = ialloc(dev);
@@ -112,6 +143,15 @@ int mkdir_helper(MINODE* parent, char* dirName){
     return 0;
 }
 
+/**
+ * Validates that you can create a new entry in our filesystem & a specific path
+ *
+ * @param pip parent memory inode where we want to create this item
+ * @param parent string we will write the parents path too
+ * @param child name of the child
+ * @param pathname this is where we pass in the path to validate
+ * @return 0 if valid, -1 if not valid
+ */
 int validate_creation_function(MINODE *pip,char *parent,char *child,char *pathname){
     //Store two instances of the name 1 for basename and 1 for dirname
     char pathStr1[256];
@@ -156,6 +196,13 @@ int validate_creation_function(MINODE *pip,char *parent,char *child,char *pathna
     }
 }
 
+/**
+ *
+ * Creates a directory based on a pathname in our file system
+ *
+ * @param pathname of the directory passed in by a command
+ * @return 0 success, -1 failure
+ */
 int func_mkdir(char *pathname){
     //Create variables to be written too in our validation function
     MINODE *pip;
@@ -225,6 +272,12 @@ int func_mkdir(char *pathname){
 
 }
 
+/**
+ *
+ * Prepares the inode for a file that we just created so that it is recognizable in our filesystem
+ *
+ * @param ip pointer to the inode we are modifying
+ */
 void prepareFileINODE(INODE *ip){
     //Set up that this is a file & not a directory or linker
     ip->i_mode = FILE_MODE;
@@ -243,6 +296,15 @@ void prepareFileINODE(INODE *ip){
     }
 }
 
+/**
+ *
+ * Helps us create a file in our file system. Saves space of code within #func_creat.
+ * This is where we allocate a new inode & write it to disk
+ *
+ * @param pip
+ * @param fileName
+ * @return 0 on success
+ */
 int creat_helper(MINODE* pip, char *fileName){
     //Allocate new space for inode and block
     int ino = ialloc(dev);
@@ -265,6 +327,14 @@ int creat_helper(MINODE* pip, char *fileName){
     return 0;
 }
 
+
+/**
+ *
+ * Function used to creat regular files on our filesystem.
+ *
+ * @param path | name of the file we are creating and the path
+ * @return 0 success, -1 failure
+ */
 int func_creat(char *path){
     //Create variables to be written too in our validation function
     MINODE *pip;
@@ -325,6 +395,13 @@ int func_creat(char *path){
     }
 }
 
+/**
+ *
+ * Checks if a directory is empty
+ *
+ * @param mip memory inode pointer to the directory in question
+ * @return 1 for empty, -1 for not empty
+ */
 int dir_empty(MINODE *mip){
 
     //Create directory variable to use while looking through the directory
@@ -377,6 +454,13 @@ int dir_empty(MINODE *mip){
     return 1;
 }
 
+/**
+ *
+ * Removes a directory from our filesystem
+ *
+ * @param path to the directory
+ * @return 0 success, -1 failure
+ */
 int func_rmdir(char *path){
     //Find the ino for the directory we are trying to remove
     int ino = getino(path);

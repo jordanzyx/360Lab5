@@ -21,19 +21,14 @@ extern int nblocks, ninodes, bmap, imap, iblk;
 
 extern char line[128], cmd[32], pathname[128];
 
-int validate(char *item,int *ino){
-    //Get the ino for the item
-    *ino = getino(item);
-
-    //Confirm if its valid
-    if(*ino == -1){
-        printf("Error: %s does not exist\n",item);
-        return -1;
-    }
-
-    return 0;
-}
-
+/**
+ *
+ * Creates a hard link between two files
+ *
+ * @param old path to the file we are making a hard link to
+ * @param new path of the file containing the hard link
+ * @return
+ */
 int func_link(char *old, char *new){
     //Set up the device to be accurate for what we are dealing with
     if (old[0] == '/')dev = root->dev;
@@ -105,7 +100,13 @@ int func_link(char *old, char *new){
     iput(mip_new);
 }
 
-
+/**
+ *
+ * Unlinks & removes a file from our filesystem
+ *
+ * @param path to the file
+ * @return -1 on failure
+ */
 int func_unlink(char *path){
     //Set up device properly for the path
     dev = path[0] == '/' ? root->dev : running->cwd->dev;
@@ -160,7 +161,14 @@ int func_unlink(char *path){
     }
 }
 
-
+/**
+ *
+ * Creates a symbolic link to a entry in our filesystem (NOTE: can cross devices)
+ *
+ * @param old path of file we are linking too
+ * @param new path of the file that is the symbolic link
+ * @return nothing
+ */
 int func_symlink(char *old, char *new){
 
     // Prepare device for finding old
@@ -219,10 +227,13 @@ int func_symlink(char *old, char *new){
 
 /**
  *
+ * Prints out to the stdin the link from a LNK file
+ *  Algorithm
  * (1). get file’s INODE in memory; verify it’s a LNK file
  * (2). copy target filename from INODE.i_block[ ] into buffer;
  * (3). return file size;
  *
+ * @param file path of the file we are reading the link from
  */
 int func_readlink(char *file){
     //Properly set up the device
