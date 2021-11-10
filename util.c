@@ -26,18 +26,37 @@ extern int nblocks, ninodes, bmap, imap, iblk;
 
 extern char line[128], cmd[32], pathname[128];
 
+/**
+ *
+ * @param dev
+ * @param blk
+ * @param buf
+ * @return
+ */
 int get_block(int dev, int blk, char *buf)
 {
    lseek(dev, (long)blk*BLKSIZE, 0);
    read(dev, buf, BLKSIZE);
 }   
 
+/**
+ *
+ * @param dev
+ * @param blk
+ * @param buf
+ * @return
+ */
 int put_block(int dev, int blk, char *buf)
 {
    lseek(dev, (long)blk*BLKSIZE, 0);
    write(dev, buf, BLKSIZE);
 }   
 
+/**
+ *
+ * @param pathname
+ * @return
+ */
 int tokenize(char *pathname)
 {
   int i;
@@ -61,6 +80,12 @@ int tokenize(char *pathname)
 }
 
 // return minode pointer to loaded INODE
+/**
+ *
+ * @param dev
+ * @param ino
+ * @return
+ */
 MINODE *iget(int dev, int ino)
 {
   int i;
@@ -104,6 +129,10 @@ MINODE *iget(int dev, int ino)
   return 0;
 }
 
+/**
+ *
+ * @param mip
+ */
 void iput(MINODE *mip)
 {
  int i, block, offset;
@@ -143,6 +172,12 @@ void iput(MINODE *mip)
  *****************************************************/
 } 
 
+/**
+ *
+ * @param mip
+ * @param name
+ * @return
+ */
 int search(MINODE *mip, char *name)
 {
    int i; 
@@ -175,6 +210,11 @@ int search(MINODE *mip, char *name)
    return 0;
 }
 
+/**
+ *
+ * @param pathname
+ * @return
+ */
 int getino(char *pathname)
 {
   int i, ino, blk, offset;
@@ -216,6 +256,13 @@ int getino(char *pathname)
 }
 
 // These 2 functions are needed for pwd()
+/**
+ *
+ * @param parent
+ * @param myino
+ * @param myname
+ * @return
+ */
 int findmyname(MINODE *parent, u32 myino, char myname[ ]) 
 {
   // WRITE YOUR code here
@@ -260,6 +307,12 @@ int findmyname(MINODE *parent, u32 myino, char myname[ ])
     return -1;
 }
 
+/**
+ *
+ * @param mip
+ * @param myino
+ * @return
+ */
 int findino(MINODE *mip, u32 *myino) // myino = i# of . return i# of ..
 {
   // mip points at a DIR minode
@@ -292,21 +345,41 @@ int findino(MINODE *mip, u32 *myino) // myino = i# of . return i# of ..
   return dp->inode;
 }
 
-//re-write
+/**
+ *
+ * Increases the counter on a mount with how many free inodes are left
+ *
+ * @param dev device id for the mount we are adjusting the count for
+ * @return nothing
+ */
 int incFreeInodes(int dev){
+    //Buffer to read the device information into
     char buf[BLKSIZE];
-    // inc free inodes count in SUPER and GD
+
+    //Read dev. info
     get_block(dev, 1, buf);
+
+    //Cast buffer into the SUPER_block & adjust free inodes
     sp = (SUPER *)buf;
     sp->s_free_inodes_count++;
+
+    //Write to block the updates to the super block
     put_block(dev, 1, buf);
+
+    //Get the group description block
     get_block(dev, 2, buf);
+
+    //Cast to Group descriptor & increase free inodes then write to disk the changes
     gp = (GD *)buf;
     gp->bg_free_inodes_count++;
     put_block(dev, 2, buf);
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @return
+ */
 int incFreeBlocks(int dev){
     char buf[BLKSIZE];
 
@@ -321,7 +394,11 @@ int incFreeBlocks(int dev){
     put_block(dev, 2, buf);
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @return
+ */
 int decFreeBlocks(int dev){
     char buf[BLKSIZE];
 
@@ -336,7 +413,11 @@ int decFreeBlocks(int dev){
     put_block(dev, 2, buf);
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @return
+ */
 int decFreeInodes(int dev){
     char buf[BLKSIZE];
 
@@ -351,12 +432,22 @@ int decFreeInodes(int dev){
     put_block(dev, 2, buf);
 }
 
-//re-write
+/**
+ *
+ * @param buf
+ * @param bitnum
+ * @return
+ */
 int tst_bit(char *buf, int bitnum){
     return buf[bitnum / 8] & (1 << (bitnum % 8));
 }
 
-//re-write
+/**
+ *
+ * @param buf
+ * @param bitnum
+ * @return
+ */
 int set_bit(char *buf, int bitnum){
     int bit, byte;
     byte = bitnum / 8;
@@ -368,7 +459,12 @@ int set_bit(char *buf, int bitnum){
     return 0;
 }
 
-//re-write
+/**
+ *
+ * @param buf
+ * @param bitnum
+ * @return
+ */
 int clr_bit(char *buf, int bitnum){
     int bit, byte;
     byte = bitnum / 8;
@@ -380,7 +476,11 @@ int clr_bit(char *buf, int bitnum){
     return 0;
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @return
+ */
 int balloc(int dev){
     int i;
     char buf[BLKSIZE];
@@ -401,7 +501,11 @@ int balloc(int dev){
     return 0;
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @return
+ */
 int ialloc(int dev){
     int i;
     char buf[BLKSIZE];
@@ -422,7 +526,13 @@ int ialloc(int dev){
     return 0;
 }
 
-//re-write
+/**
+ *
+ * @param pip
+ * @param myino
+ * @param myname
+ * @return
+ */
 int enter_name(MINODE *pip, int myino, char *myname){
     char buf[BLKSIZE], *cp;
     int bno;
@@ -493,7 +603,12 @@ int enter_name(MINODE *pip, int myino, char *myname){
     }
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @param bno
+ * @return
+ */
 int bdealloc(int dev, int bno){
     char buf[BLKSIZE]; // a sweet buffer
 
@@ -504,7 +619,12 @@ int bdealloc(int dev, int bno){
     return 0;
 }
 
-//re-write
+/**
+ *
+ * @param dev
+ * @param ino
+ * @return
+ */
 int idealloc(int dev, int ino){
     int i;
     char buf[BLKSIZE];
@@ -522,7 +642,12 @@ int idealloc(int dev, int ino){
     incFreeInodes(dev);
 }
 
-//re-write
+/**
+ *
+ * @param parent
+ * @param name
+ * @return
+ */
 int rm_child(MINODE *parent, char *name){
     DIR *dp, *prevdp, *lastdp;
     char *cp, *lastcp, buf[BLKSIZE], tmp[256], *startptr, *endptr;
@@ -597,6 +722,11 @@ int rm_child(MINODE *parent, char *name){
     return -1;
 }
 
+/**
+ *
+ * @param mip
+ * @return
+ */
 int freeINodes(MINODE *mip) {
     char buf[BLKSIZE];
     INODE *ip = &mip->INODE;
