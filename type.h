@@ -23,9 +23,11 @@ DIR   *dp;
 #define NMINODE   128
 #define NPROC       2
 #define NFD        16
+#define NMOUNT     16
 
 #define DIR_MODE 0x41ED
 #define FILE_MODE 0x81A4
+#define EXT2_MAGIC 0xEF53
 
 //MODES FOR FILES WHEN WE OPEN
 #define READ 0
@@ -63,5 +65,28 @@ typedef struct proc{
   MINODE      *cwd;      // CWD directory pointer
   OFT *fd[NFD];          // list of open files
 }PROC;
+
+typedef struct mount{
+    //Device number, note: 0 if free
+    int dev;
+
+    //Super block & group descriptor info
+    int numINodes;
+    int numBlocks;
+    int freeINodes;
+    int freeBlocks;
+    int bmap;
+    int imap;
+
+    //Starting block for INodes
+    int iblock;
+
+    //Name of device & name of mounted directory
+    char mntPath[256];
+    char devName[256];
+
+    //MINODE to mount point
+    MINODE *mountPoint;
+}MOUNT;
 
 #endif

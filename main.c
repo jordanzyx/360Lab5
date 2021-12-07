@@ -24,9 +24,13 @@ char gpath[128]; // global for tokenized components
 char *name[64];  // assume at most 64 components in pathname
 int   n;         // number of component strings
 
+//Mount Information
 int fd, dev;
 int nblocks, ninodes, bmap, imap, iblk;
 char line[128], cmd[32], pathname[128], pathname2[128];
+
+//Mounts
+MOUNT mounts[NMOUNT];
 
 
 int init()
@@ -34,6 +38,7 @@ int init()
   int i, j;
   MINODE *mip;
   PROC   *p;
+  MOUNT *mountP;
 
   printf("init()\n");
 
@@ -50,6 +55,10 @@ int init()
     p->uid = p->gid = 0;
     p->cwd = 0;
   }
+    for (int i = 0; i < NMOUNT; ++i) {
+        mountP = &mounts[i];
+        mountP->dev = 0;
+    }
 
   root = 0;
 }

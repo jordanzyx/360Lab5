@@ -41,5 +41,10 @@ int func_write_cmd();
 int func_cat(char *file);
 int func_cp(char* source, char* destination);
 
+//mounts.c
+int func_switch();
+int func_mount(char *fileSystem, char *mount_path);
+int func_umount(char *fileSystem);
+
 
 #endif //INC_360LAB5_FUNC_H

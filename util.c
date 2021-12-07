@@ -28,10 +28,12 @@ extern char line[128], cmd[32], pathname[128];
 
 /**
  *
- * @param dev
- * @param blk
- * @param buf
- * @return
+ * Gets the block of data and reads it into a buffer
+ *
+ * @param dev device number we are getting the block from
+ * @param blk int number representing where to find the block
+ * @param buf buffer to read the information into
+ * @return nothing
  */
 int get_block(int dev, int blk, char *buf)
 {
