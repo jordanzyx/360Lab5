@@ -31,6 +31,9 @@ int func_read(int fd,char *buffer,int bytes){
     OFT *oftp = running->fd[fd];
     MINODE *mip = oftp->mptr;
 
+    //
+    printf("FD: %d, ino = %d\n",fd,mip->ino);
+
     //How many bytes we have read
     int count = 0;
 
@@ -140,7 +143,7 @@ int func_read(int fd,char *buffer,int bytes){
 }
 
 int func_write_cmd(){
-    int fd = 1;
+    int fd = 0;
     char buffer[BLKSIZE];
 
     //Read in the file descriptor to write too
@@ -154,12 +157,14 @@ int func_write_cmd(){
     bzero(buffer, BLKSIZE);
     fgets(buffer, BLKSIZE, stdin);
 
+    printf("Here1\n");
     //Validate that the fd is valid
     if (!(fd >= 0 && fd < NFD)) {
         printf("Error writing: invalid file descriptor\n");
         return -1;
     }
 
+    printf("Here2\n");
     // verify fd is open for RD or RW
     int mode = running->fd[fd]->mode;
     if (mode != WRITE && mode != READ_WRITE) {
@@ -167,6 +172,7 @@ int func_write_cmd(){
         return -1;
     }
 
+    printf("Here3\n");
     //Write to file
     int bytes = sizeof(buffer);
     return func_write(fd, buffer, bytes);
@@ -429,6 +435,12 @@ int func_cp(char* source, char* destination){
     //Open the two files
     int fdSource = func_open(source, READ);
     int fdDestination = func_open(destination, READ_WRITE);
+
+    //Bug cracker: O
+    int ino = getino(source);
+    MINODE *mip = iget(dev,ino);
+    running->fd[0]->mptr = mip;
+
 
     //Make sure we got two files back
     if (fdSource == -1 || fdDestination == -1) {

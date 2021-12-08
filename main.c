@@ -54,6 +54,11 @@ int init()
     p->pid = i;
     p->uid = p->gid = 0;
     p->cwd = 0;
+
+      for (int k = 0; k < NFD; ++k) {
+          p->fd[k] = 0;
+      }
+    
   }
     for (int i = 0; i < NMOUNT; ++i) {
         mountP = &mounts[i];

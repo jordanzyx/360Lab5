@@ -42,7 +42,7 @@ int cd(char *pathname)
       //Confirm node is directory
       if(S_ISDIR(node->INODE.i_mode)){
           //Check permissions
-          if (func_access(pathname,'w') != 1){
+          if (func_access(pathname,'x') != 1){
               printf("Error: You do not have permission to view this directory\n");
               return -1;
           }

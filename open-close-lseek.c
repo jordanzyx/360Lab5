@@ -70,7 +70,10 @@ int func_open(char *path, int mode){
     }
 
     //Get the memory INODE so we can validate other information about this file
+    printf("Opening file %s with ino %d\n",path,ino);
+    func_pfd();
     MINODE *mip = iget(dev, ino);
+    printf("Confirming %d %d\n",ino,mip->ino);
 
     //Confirm that the file is a regular file
     if (!S_ISREG(mip->INODE.i_mode)) {
@@ -111,7 +114,9 @@ int func_open(char *path, int mode){
     //Find the first open FD slot
     for (int i = 0; i < NFD; i++) {
         //Skip fd slots that are taken
-        if(running->fd[i] != NULL)continue;
+        if(running->fd[i] != 0)continue;
+        printf("==== ON %d ====\n\n",i);
+        func_pfd();
 
         //Store on the process
         running->fd[i] = oftp;
@@ -134,6 +139,9 @@ int func_open(char *path, int mode){
     iput(mip);
 
     printf("Opened %s with fd: %d\n",path,fdGiven);
+
+    //Look at me!
+    func_pfd();
 
     return fdGiven;
 }
@@ -193,7 +201,7 @@ int func_pfd(){
 
 
         //Print info for the file descriptor
-        printf("fd: %d, mode: %s\n",i, mode);
+        printf("fd: %d, mode: %s  ino: %d\n",i, mode,running->fd[i]->mptr->ino);
     }
 
     return -1;

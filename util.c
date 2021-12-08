@@ -794,7 +794,6 @@ int func_access(char *filename, char mode) {
     int result = 0;
 
     //Check if we are the super user
-    printf("Checking with user uid of %d\n",running->uid);
     if (running->uid == 0)return 1;
 
     //Get the INODE for the file
@@ -802,7 +801,6 @@ int func_access(char *filename, char mode) {
     MINODE* mip = iget(dev, ino);
 
     //If we are the owner check the owner bits
-    printf("UID of owner of file = %d\n",mip->INODE.i_uid);
     if(mip->INODE.i_uid == running->uid){
         if(mode == 'r' && ( (mip->INODE.i_mode & S_IRUSR) > 0))result = 1;
         if(mode == 'w' && ( (mip->INODE.i_mode & S_IWUSR) > 0))result = 1;
