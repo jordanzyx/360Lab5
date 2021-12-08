@@ -5,6 +5,7 @@
 #include <libgen.h>
 #include <sys/time.h>
 #include <ext2fs/ext2_fs.h>
+#include <time.h>
 #include "string.h"
 #include "func.h"
 #include "util.h"

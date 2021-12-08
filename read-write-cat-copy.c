@@ -59,7 +59,11 @@ int func_read(int fd,char *buffer,int bytes){
     char *cq = buffer;
 
     //Loop while bytes is still positive & available is aswell
+    printf("here before whille \n");
+    printf("Bytes: %d Avail: %d\n",bytes,avil);
     while (bytes && avil) {
+        if(avil <= 0)break;
+
 
         //This is where we are starting to read from
         lbk = oftp->offset / BLKSIZE;
@@ -68,13 +72,16 @@ int func_read(int fd,char *buffer,int bytes){
         startByte = oftp->offset % BLKSIZE;
 
         //Read from the direct blocks to start
+        printf("here lbk: %d\n",lbk );
+        printf("avail: %d\n",avil);
         if(lbk < 12)blk = mip->INODE.i_block[lbk];
 
         //Read from the first section of 256 indirect blocks
         if(lbk >= 12 && lbk < 256 + 12){
+            printf("here");
             //Read the block numbers into the integerBuffer then find block
             get_block(mip->dev, mip->INODE.i_block[12], ibuf);
-
+            printf("here");
             //Subtract 12 from the lbk we are finding because that is the offset for the indirect section
             blk = ibuf[lbk-12];
         }
@@ -82,7 +89,7 @@ int func_read(int fd,char *buffer,int bytes){
         //Read from the double indirect blocks (note: we do not have to deal with triple indirect blocks but if we wanted this to be more solid we would need another section for that)
         if(lbk >= 256 + 12){
             //Start by reading the first set of indirect blocks into integer buffer
-            get_block(mip->dev, mip->INODE.i_block[13], ibuf);
+            get_block(mip->dev, mip->INODE.i_block[13], (char *)ibuf);
 
             //Find the proper block number based on how many pointers can be in a block
             lbk = lbk - (BLKSIZE / sizeof(int)) - 12;
@@ -99,6 +106,7 @@ int func_read(int fd,char *buffer,int bytes){
         }
 
         //We use this buffer to read from the blk
+        printf("here at real read");
         char rBuf[BLKSIZE];
         get_block(mip->dev, blk, rBuf);
 
@@ -129,7 +137,7 @@ int func_read(int fd,char *buffer,int bytes){
 }
 
 int func_write_cmd(){
-    int fd = 0;
+    int fd = 1;
     char buffer[BLKSIZE];
 
     //Read in the file descriptor to write too
@@ -402,6 +410,8 @@ int func_cat(char *file){
             cp++;
         }
     }
+
+    printf("finished printing file\n");
 
     //Print new line
     printf("\n");

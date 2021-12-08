@@ -5,6 +5,7 @@
 #include <libgen.h>
 #include <sys/time.h>
 #include <ext2fs/ext2_fs.h>
+#include <time.h>
 #include "string.h"
 #include "func.h"
 #include "util.h"
@@ -468,7 +469,7 @@ int func_rmdir(char *path){
     //Confirm existence of item @ pathname
     if (ino == -1)
     {
-        printf("ERROR: ino does not exist\n");
+        printf("ERROR: ino doesn't exist\n");
         return -1;
     }
 
@@ -495,6 +496,8 @@ int func_rmdir(char *path){
         printf("ERROR: %s is in use, the reference count > 2, refcount = %d\n", path, mip->refCount);
         return -1;
     }
+
+    //Check permissions
 
     //Loop through blocks & deallocate space for them
     for (int i = 0; i < 12; i++)

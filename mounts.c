@@ -100,8 +100,8 @@ int func_mount(char *fileSystem, char *mount_path){
     //  |
     //  |-> read superblock, check if s_magic is 0xEF53
     printf("opening file %s for mount\n", fileSystem);
-    int fd = func_open(fileSystem, READ_WRITE);
-    if (is_invalid_fd(fd)) {
+    int fd = open(fileSystem, O_RDWR);
+    if (fd < 0) {
         printf("invalid fd for filesys: error opening file %s\n", fileSystem);
         return -1;
     }
@@ -111,7 +111,7 @@ int func_mount(char *fileSystem, char *mount_path){
     SUPER *sp = (SUPER *)buf;
 
     if (sp->s_magic != EXT2_MAGIC) {
-        printf("error, magic = %x is not an ext2 filesystem\n", sp->s_magic);
+        printf("error, magic = %d is not an ext2 filesystem\n", sp->s_magic);
         return -1;
     }
 
@@ -135,6 +135,12 @@ int func_mount(char *fileSystem, char *mount_path){
     // for convenience, mark other information as well (TODO)
     mount->numINodes = sp->s_inodes_count;
     mount->numBlocks = sp->s_blocks_count;
+    get_block(dev, 2, buf);
+    gp = (GD *)buf;
+
+    mount->bmap = gp->bg_block_bitmap;
+    mount->imap = gp->bg_inode_bitmap;
+    mount->iblock = gp->bg_inode_table;
 
     // mark mount_point's minode as being mounted on and let it point at the MOUNT table entry, which points back to the
     // m_p minode

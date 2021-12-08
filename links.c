@@ -65,8 +65,8 @@ int func_link(char *old, char *new){
 
     //Get the ino for the new file
     int newIno = getino(new);
-    if(newIno == -1){
-        printf("Error: %s does not exist\n",new);
+    if(newIno != -1){
+        printf("Error: %s already exists\n",new);
         return -1;
     }
 

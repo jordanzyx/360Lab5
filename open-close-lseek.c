@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <ext2fs/ext2_fs.h>
 #include <stdlib.h>
+#include <time.h>
 #include "string.h"
 #include "func.h"
 #include "util.h"

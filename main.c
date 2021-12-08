@@ -70,7 +70,7 @@ int mount_root()
   root = iget(dev, 2);
 }
 
-char *disk = "/dev/disk3";
+char *disk = "samples/disk2";
 
 int quit()
 {
@@ -198,6 +198,10 @@ int main(int argc, char *argv[ ])
     else if (strcmp(cmd, "quit")==0){
         quit();
         break;
+    }
+    else if (strcmp(cmd,"mount")==0){
+        sscanf(line,"%s %s %s",cmd,pathname,pathname2);
+        func_mount(pathname,pathname2);
     }
 
   }

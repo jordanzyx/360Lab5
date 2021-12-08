@@ -44,7 +44,7 @@ typedef struct minode{
   int dirty;             // 0 for clean, 1 for modified
 
   int mounted;           // for level-3
-  struct mntable *mptr;  // for level-3
+  struct mount *mptr;  // for level-3
 }MINODE;
 
 // Open file table
