@@ -47,7 +47,7 @@ int func_read(int fd,char *buffer,int bytes){
     int ibuf[BLKSIZE] = { 0 };
 
     //Integer buffer we use when reading from double indirect blocks.
-    int dibuf[BLKSIZE] = {0 };
+    int dibuf[BLKSIZE] = { 0 };
 
     //How many bytes are available to read from when we start
     int avil = mip->INODE.i_size - oftp->offset;
@@ -123,14 +123,17 @@ int func_read(int fd,char *buffer,int bytes){
         avil -= amt;
         cq += amt;
         count += amt;
+        cp += amt;
 
         //Handle differences
-        if (bytes <= remainder)remainder -= amt;
-        else bytes -= amt;
-
-        //Handle differences
-        if (bytes <= remainder)bytes = 0;
-        else remainder = 0;
+        if (bytes <= remainder){
+          remainder -= amt;
+          bytes = 0;
+        }
+        else {
+          bytes -= amt;
+          remainder = 0;
+        }
     }
 
     return count;
@@ -165,8 +168,8 @@ int func_write_cmd(){
     }
 
     //Write to file
-    int n_bytes = sizeof(buffer);
-    return func_write(fd, buffer, n_bytes);
+    int bytes = sizeof(buffer);
+    return func_write(fd, buffer, bytes);
 }
 
 int func_write(int fd, char* buffer, int byteCount){
@@ -442,6 +445,8 @@ int func_cp(char* source, char* destination){
 
     //How many bytes we are reading
     int n = 0;
+
+    printf("Attempting to copy %s to %s with fd: %d to %d\n",source,destination,fdSource,fdDestination);
 
     //Loop while we can read
     while ((n = func_read(fdSource, buf, BLKSIZE))){
