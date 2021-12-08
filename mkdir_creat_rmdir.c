@@ -498,6 +498,10 @@ int func_rmdir(char *path){
     }
 
     //Check permissions
+    if (func_access(path,'w') != 1){
+        printf("Error: You do not have permission to delete this directory\n");
+        return -1;
+    }
 
     //Loop through blocks & deallocate space for them
     for (int i = 0; i < 12; i++)

@@ -39,7 +39,7 @@ int get_block(int dev, int blk, char *buf)
 {
    lseek(dev, (long)blk*BLKSIZE, 0);
    read(dev, buf, BLKSIZE);
-}   
+}
 
 /**
  *
@@ -52,7 +52,7 @@ int put_block(int dev, int blk, char *buf)
 {
    lseek(dev, (long)blk*BLKSIZE, 0);
    write(dev, buf, BLKSIZE);
-}   
+}
 
 /**
  *
@@ -75,7 +75,7 @@ int tokenize(char *pathname)
     s = strtok(0, "/");
   }
   name[n] = 0;
-  
+
   for (i= 0; i<n; i++)
     printf("%s  ", name[i]);
   printf("\n");
@@ -104,7 +104,7 @@ MINODE *iget(int dev, int ino)
        return mip;
     }
   }
-    
+
   for (i=0; i<NMINODE; i++){
     mip = &minode[i];
     if (mip->refCount == 0){
@@ -113,7 +113,7 @@ MINODE *iget(int dev, int ino)
        mip->dev = dev;
        mip->ino = ino;
 
-       // get INODE of ino to buf    
+       // get INODE of ino to buf
        blk    = (ino-1)/8 + iblk;
        offset = (ino-1) % 8;
 
@@ -144,7 +144,7 @@ void iput(MINODE *mip)
  if (mip==0)return;
 
  mip->refCount--;
- 
+
  if (mip->refCount > 0) return;
  if (!mip->dirty)       return;
 
@@ -172,7 +172,7 @@ void iput(MINODE *mip)
 
   Write YOUR code here to write INODE back to disk
  *****************************************************/
-} 
+}
 
 /**
  *
@@ -182,7 +182,7 @@ void iput(MINODE *mip)
  */
 int search(MINODE *mip, char *name)
 {
-   int i; 
+   int i;
    char *cp, c, sbuf[BLKSIZE], temp[256];
    DIR *dp;
    INODE *ip;
@@ -200,7 +200,7 @@ int search(MINODE *mip, char *name)
    while (cp < sbuf + BLKSIZE){
      strncpy(temp, dp->name, dp->name_len);
      temp[dp->name_len] = 0;
-     printf("%4d  %4d  %4d    %s\n", 
+     printf("%4d  %4d  %4d    %s\n",
            dp->inode, dp->rec_len, dp->name_len, dp->name);
      if (strcmp(temp, name)==0){
         printf("found %s : ino = %d\n", temp, dp->inode);
@@ -227,7 +227,7 @@ int getino(char *pathname)
   printf("getino: pathname=%s\n", pathname);
   if (strcmp(pathname, "/")==0)
       return 2;
-  
+
   // starting mip = root OR CWD
   if (pathname[0]=='/')
      mip = root;
@@ -235,13 +235,13 @@ int getino(char *pathname)
      mip = running->cwd;
 
   mip->refCount++;         // because we iput(mip) later
-  
+
   tokenize(pathname);
 
   for (i=0; i<n; i++){
       printf("===========================================\n");
       printf("getino: i=%d name[%d]=%s\n", i, i, name[i]);
- 
+
       ino = search(mip, name[i]);
 
       if (ino==0){
@@ -265,7 +265,7 @@ int getino(char *pathname)
  * @param myname
  * @return
  */
-int findmyname(MINODE *parent, u32 myino, char myname[ ]) 
+int findmyname(MINODE *parent, u32 myino, char myname[ ])
 {
   // WRITE YOUR code here
   // search parent's data block for myino; SAME as search() but by myino
@@ -781,4 +781,43 @@ int freeINodes(MINODE *mip) {
     mip->INODE.i_size = 0;
     mip->dirty = 1;
     iput(mip);
+}
+
+/**
+* Access checks for access with the current user process to a specific file with a mode of access.
+* @param filename name of the file we are checking for access too
+* @param mode what mode are we trying to use r/w/x
+* @return result which is 1 for has access.
+*/
+int func_access(char *filename, char mode) {
+    //This is the value we are going to return at the end showing if we have access or not
+    int result = 0;
+
+    //Check if we are the super user
+    printf("Checking with user uid of %d\n",running->uid);
+    if (running->uid == 0)return 1;
+
+    //Get the INODE for the file
+    int ino = getino(filename);
+    MINODE* mip = iget(dev, ino);
+
+    //If we are the owner check the owner bits
+    printf("UID of owner of file = %d\n",mip->INODE.i_uid);
+    if(mip->INODE.i_uid == running->uid){
+        if(mode == 'r' && ( (mip->INODE.i_mode & S_IRUSR) > 0))result = 1;
+        if(mode == 'w' && ( (mip->INODE.i_mode & S_IWUSR) > 0))result = 1;
+        if(mode == 'x' && ( (mip->INODE.i_mode & S_IXUSR) > 0))result = 1;
+    }
+
+    //If we are not the owner check the other bits
+    if(mip->INODE.i_uid != running->uid){
+        if(mode == 'r' && ( (mip->INODE.i_mode & S_IROTH) > 0))result = 1;
+        if(mode == 'w' && ( (mip->INODE.i_mode & S_IWOTH) > 0))result = 1;
+        if(mode == 'x' && ( (mip->INODE.i_mode & S_IXOTH) > 0))result = 1;
+    }
+
+    //Return the memory inode
+    iput(mip);
+
+    return result;
 }

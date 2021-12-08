@@ -132,6 +132,12 @@ int func_unlink(char *path){
         return -1;
     }
 
+    //Check permissions
+    if (func_access(path,'w') != 1){
+        printf("Error: You do not have permission to unlink this file\n");
+        return -1;
+    }
+
     //Drop the link count down
     mip->INODE.i_links_count--;
 

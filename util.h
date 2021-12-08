@@ -30,5 +30,6 @@ int bdealloc(int dev, int bno);
 int idealloc(int dev, int ino);
 int rm_child(MINODE *parent, char *name);
 int freeINodes(MINODE *mip);
+int func_access(char *filename, char mode);
 
 #endif //INC_360LAB5_UTIL_H

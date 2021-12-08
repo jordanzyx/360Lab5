@@ -150,11 +150,10 @@ int func_close(int fd){
         printf("Error closing: No OFT found @ fd %d\n",fd);
         return -1;
     }
-    printf("here \n");
+
     //Grab OFT & index
     OFT *oftp = running->fd[fd];
 
-    printf("here \n");
     //Clear it from the table
     running->fd[fd] = 0;
 
@@ -164,13 +163,11 @@ int func_close(int fd){
     //If the references are over 0 exit
     if (oftp->refCount > 0)return 0;
 
-    printf("here \n");
     //Push the changes back to disk
     MINODE *mip = oftp->mptr;
     mip->dirty = 1;
     iput(mip);
 
-    printf("Did we make it here \n");
     //Destroy the pointer we allocated for this information
     free(oftp);
 

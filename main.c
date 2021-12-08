@@ -199,6 +199,7 @@ int main(int argc, char *argv[ ])
         quit();
         break;
     }
+    else if (strcmp(cmd,"switch") == 0)func_switch();
     else if (strcmp(cmd,"mount")==0){
         sscanf(line,"%s %s %s",cmd,pathname,pathname2);
         func_mount(pathname,pathname2);
