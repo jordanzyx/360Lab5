@@ -15,6 +15,9 @@ char *pwd(MINODE *wd);
 //mkdir-creat-rmdir.c
 int func_mkdir(char *pathname);
 int func_creat(char *pathname);
+int dir_empty(MINODE *mip);
+int enter_name(MINODE *pip, int myino, char *myname);
+int rm_child(MINODE *parent, char *name);
 int func_rmdir(char *pathname);
 
 //links.c
@@ -44,7 +47,9 @@ int func_cp(char* source, char* destination);
 //mounts.c
 int func_switch();
 int func_mount(char *fileSystem, char *mount_path);
+int func_mounts();
 int func_umount(char *fileSystem);
+
 
 
 #endif //INC_360LAB5_FUNC_H

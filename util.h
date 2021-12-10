@@ -25,11 +25,10 @@ int incFreeBlocks(int dev);
 int tst_bit(char *buf, int bitnum);
 int set_bit(char *buf, int bitnum);
 int clr_bit(char *buf, int bitnum);
-int enter_name(MINODE *pip, int myino, char *myname);
 int bdealloc(int dev, int bno);
 int idealloc(int dev, int ino);
-int rm_child(MINODE *parent, char *name);
 int freeINodes(MINODE *mip);
 int func_access(char *filename, char mode);
+MOUNT *getMount(int dev);
 
 #endif //INC_360LAB5_UTIL_H

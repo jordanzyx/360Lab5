@@ -25,125 +25,12 @@ extern int nblocks, ninodes, bmap, imap, iblk;
 
 extern char line[128], cmd[32], pathname[128];
 
-int func_read(int fd,char *buffer,int bytes){
-
-    //Obtain the MINODe & OFT for the file we are reading from
-    OFT *oftp = running->fd[fd];
-    MINODE *mip = oftp->mptr;
-
-    //
-    printf("FD: %d, ino = %d\n",fd,mip->ino);
-
-    //How many bytes we have read
-    int count = 0;
-
-    //What block we are on
-    int lbk;
-
-    //Byte we are starting to read from
-    int startByte;
-
-    //Integer representation of block returned from the i_block[lbk]
-    int blk;
-
-    //Integer buffer we use when reading from indirect blocks
-    int ibuf[BLKSIZE] = { 0 };
-
-    //Integer buffer we use when reading from double indirect blocks.
-    int dibuf[BLKSIZE] = { 0 };
-
-    //How many bytes are available to read from when we start
-    int avil = mip->INODE.i_size - oftp->offset;
-
-    //Adjust bytes we want to read incase it is greater than the amount available
-    if (bytes > avil)bytes = avil;
-
-    //This is the start of the buffer and we use this to know we are writing too at all times (writing within the read process)
-    char *cq = buffer;
-
-    //Loop while bytes is still positive & available is aswell
-    printf("here before whille \n");
-    printf("Bytes: %d Avail: %d\n",bytes,avil);
-    while (bytes && avil) {
-        if(avil <= 0)break;
-
-
-        //This is where we are starting to read from
-        lbk = oftp->offset / BLKSIZE;
-
-        //Adjust the start byte to read from
-        startByte = oftp->offset % BLKSIZE;
-
-        //Read from the direct blocks to start
-        printf("here lbk: %d\n",lbk );
-        printf("avail: %d\n",avil);
-        if(lbk < 12)blk = mip->INODE.i_block[lbk];
-
-        //Read from the first section of 256 indirect blocks
-        if(lbk >= 12 && lbk < 256 + 12){
-            printf("here");
-            //Read the block numbers into the integerBuffer then find block
-            get_block(mip->dev, mip->INODE.i_block[12], ibuf);
-            printf("here");
-            //Subtract 12 from the lbk we are finding because that is the offset for the indirect section
-            blk = ibuf[lbk-12];
-        }
-
-        //Read from the double indirect blocks (note: we do not have to deal with triple indirect blocks but if we wanted this to be more solid we would need another section for that)
-        if(lbk >= 256 + 12){
-            //Start by reading the first set of indirect blocks into integer buffer
-            get_block(mip->dev, mip->INODE.i_block[13], (char *)ibuf);
-
-            //Find the proper block number based on how many pointers can be in a block
-            lbk = lbk - (BLKSIZE / sizeof(int)) - 12;
-            blk = ibuf[lbk / (BLKSIZE / sizeof(int))];
-
-            //Now with this blk value read blocks into the double_integer buffer
-            get_block(mip->dev, blk, dibuf);
-
-            //Map to correct lbk
-            lbk = lbk % (BLKSIZE / sizeof(int));
-
-            //Get proper blk
-            blk = dibuf[lbk];
-        }
-
-        //We use this buffer to read from the blk
-        printf("here at real read");
-        char rBuf[BLKSIZE];
-        get_block(mip->dev, blk, rBuf);
-
-        // Prepare to copy starting @ startByte into our buffer
-        char *cp = rBuf + startByte;
-        int remainder = BLKSIZE - startByte;
-
-        //Adjust based on amount of bytes
-        int amt = bytes <= remainder ? bytes : remainder;
-
-        //Adjust offsets
-        memcpy(cq, cp, amt);
-        oftp->offset += amt;
-        avil -= amt;
-        cq += amt;
-        count += amt;
-        cp += amt;
-
-        //Handle differences
-        if (bytes <= remainder){
-          remainder -= amt;
-          bytes = 0;
-        }
-        else {
-          bytes -= amt;
-          remainder = 0;
-        }
-    }
-
-    return count;
-}
 
 int func_write_cmd(){
+    //This variable store the file descriptor we want to write too
     int fd = 0;
+
+    //Create a buffer to read in specifics from the user
     char buffer[BLKSIZE];
 
     //Read in the file descriptor to write too
@@ -157,22 +44,19 @@ int func_write_cmd(){
     bzero(buffer, BLKSIZE);
     fgets(buffer, BLKSIZE, stdin);
 
-    printf("Here1\n");
     //Validate that the fd is valid
     if (!(fd >= 0 && fd < NFD)) {
         printf("Error writing: invalid file descriptor\n");
         return -1;
     }
 
-    printf("Here2\n");
-    // verify fd is open for RD or RW
+    //Confirm we are in write or read/write
     int mode = running->fd[fd]->mode;
     if (mode != WRITE && mode != READ_WRITE) {
         printf("Error writing: invalid mode of file we are attempting to write too\n");
         return -1;
     }
 
-    printf("Here3\n");
     //Write to file
     int bytes = sizeof(buffer);
     return func_write(fd, buffer, bytes);
@@ -181,11 +65,12 @@ int func_write_cmd(){
 int func_write(int fd, char* buffer, int byteCount){
     //Get the OFT for the file we want too write too
     OFT *oftp = running->fd[fd];
+
+    //Get the memory inode from the open file
     MINODE *mip = oftp->mptr;
+
+    //Get the literal inode
     INODE *ip = &mip->INODE;
-
-
-    int lblk, startByte, blk, remainder, doubleblk;
 
     //Buffers we store the integers for blocks in when reading from the blocks
     char ibuf[BLKSIZE] = { 0 };
@@ -195,8 +80,16 @@ int func_write(int fd, char* buffer, int byteCount){
     char *cq = buffer;
 
     while (byteCount > 0){
-        lblk = oftp->offset / BLKSIZE;
-        startByte = oftp->offset % BLKSIZE;
+        printf("Bytes left: %d\n",byteCount);
+
+        //Find the location of the lblk based on offset
+        int lblk = oftp->offset / BLKSIZE;
+
+        //Find where we are starting to write from
+        int startByte = oftp->offset % BLKSIZE;
+
+        //Create variable to store where we need to actually write too
+        int blk;
 
         //Handle writing the direct blocks
         if (lblk < 12){
@@ -209,15 +102,16 @@ int func_write(int fd, char* buffer, int byteCount){
 
         //Handle writing the indirect blocks
         if(lblk >= 12 && lblk < 268){
-
+            printf("Writing in single indirect now\n");
             //Make sure we have a place to write too
             if(ip->i_block[12] == 0){
                 //Allocate space
                 ip->i_block[12] = balloc(mip->dev);
 
                 //Confirm the space is there if not exit
+                printf("Checking for space\n");
                 if(ip->i_block[12] == 0)return 0;
-
+                printf("Created space single indriect\n");
                 //Get the block that we just allocated's information into a buffer
                 get_block(mip->dev, ip->i_block[12], ibuf);
 
@@ -263,6 +157,7 @@ int func_write(int fd, char* buffer, int byteCount){
 
         //Handle writing the doubly indirect blocks
         if(lblk >= 268){
+            printf("Writing in double indirect now\n");
             //Adjust the lblk based on the the size of each chunk & the offset of the direct blocks
             lblk = lblk - (BLKSIZE/sizeof(int)) - 12;
 
@@ -296,9 +191,9 @@ int func_write(int fd, char* buffer, int byteCount){
             get_block(mip->dev, ip->i_block[13], (char *)doublebuf);
 
             //Determine the outside blk based on the blk passed in divided by the size of chunks
-            doubleblk = doublebuf[lblk/(BLKSIZE / sizeof(int))];
+            int doubleblk = doublebuf[lblk/(BLKSIZE / sizeof(int))];
 
-            //Make sure we have a outside blk
+            //Make sure we have an outside blk
             if(doubleblk == 0){
                 //Allocate a block
                 doublebuf[lblk/(BLKSIZE / sizeof(int))] = balloc(mip->dev);
@@ -357,9 +252,11 @@ int func_write(int fd, char* buffer, int byteCount){
         char buf[BLKSIZE] = {0 };
         get_block(mip->dev, blk, buf);
 
+        printf("We are writing to blk %d\n",blk);
+
         //Store the current position & how many blocks are remaining
         char *cp = buf + startByte;
-        remainder = BLKSIZE - startByte;
+        int remainder = BLKSIZE - startByte;
 
         //How much we need to adjust by
         int amt = remainder <= byteCount ? remainder : byteCount;
@@ -384,51 +281,6 @@ int func_write(int fd, char* buffer, int byteCount){
     return byteCount;
 }
 
-int func_cat(char *file){
-    //Open the file to read
-    int fd = func_open(file, READ);
-
-    //Confirm the fd is valid
-    if (!(fd >= 0 && fd < NFD)) {
-        printf("Error: invalid file descriptor used for cat command\n");
-        func_close(fd);
-        return -1;
-    }
-
-    //Buffer to read the file into
-    char buf[BLKSIZE];
-
-    //How many bytes are being read so we can stop looping once it hits 0
-    int n;
-
-    //Loop through file and read it
-    while ((n = func_read(fd, buf, BLKSIZE))) {
-        //Set the current position to the start of the buffer
-        char *cp = buf;
-
-        //Set the end of the buffer read to null
-        buf[n] = 0;
-
-        //Loop through the buffer until we meet a null character
-        while (*cp != '\0') {
-            //Print newline if we need too or just print the character
-            if (*cp == '\n')printf("\n");
-            else printf("%c", *cp);
-
-            //Increase the current position
-            cp++;
-        }
-    }
-
-    printf("finished printing file\n");
-
-    //Print new line
-    printf("\n");
-
-    //Close the file & return
-    func_close(fd);
-    return 0;
-}
 
 int func_cp(char* source, char* destination){
 
@@ -458,7 +310,22 @@ int func_cp(char* source, char* destination){
     //How many bytes we are reading
     int n = 0;
 
-    printf("Attempting to copy %s to %s with fd: %d to %d\n",source,destination,fdSource,fdDestination);
+
+
+    printf("Attempting to copy %s to %s with fd: %d to %d ino: %d to %d\n",source,destination,fdSource,fdDestination,ino,getino(destination));
+    printf("actual ino's: %d to %d\n",running->fd[fdSource]->mptr->ino,running->fd[fdDestination]->mptr->ino);
+
+    //Try and fix issue with open being fucked up.
+    running->fd[fdSource]->mptr = iget(dev,ino);
+    running->fd[fdDestination]->mptr = iget(dev, getino(destination));
+
+    //Get INODEs to transfer information
+    INODE *sourceI = &running->fd[fdSource]->mptr->INODE;
+    INODE *destI = &running->fd[fdDestination]->mptr->INODE;
+
+    //Transfer information
+    destI->i_blocks = sourceI->i_blocks;
+    destI->i_size = sourceI->i_size;
 
     //Loop while we can read
     while ((n = func_read(fdSource, buf, BLKSIZE))){

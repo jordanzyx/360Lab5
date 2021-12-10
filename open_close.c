@@ -26,6 +26,7 @@ extern int nblocks, ninodes, bmap, imap, iblk;
 
 extern char line[128], cmd[32], pathname[128];
 
+
 int func_open(char *path, int mode){
 
     //Validate that the mode for opening is valid
@@ -70,10 +71,7 @@ int func_open(char *path, int mode){
     }
 
     //Get the memory INODE so we can validate other information about this file
-    printf("Opening file %s with ino %d\n",path,ino);
-    func_pfd();
     MINODE *mip = iget(dev, ino);
-    printf("Confirming %d %d\n",ino,mip->ino);
 
     //Confirm that the file is a regular file
     if (!S_ISREG(mip->INODE.i_mode)) {
@@ -115,8 +113,6 @@ int func_open(char *path, int mode){
     for (int i = 0; i < NFD; i++) {
         //Skip fd slots that are taken
         if(running->fd[i] != 0)continue;
-        printf("==== ON %d ====\n\n",i);
-        func_pfd();
 
         //Store on the process
         running->fd[i] = oftp;
@@ -210,3 +206,5 @@ int func_pfd(){
 int func_lseek(int fd, int pos){
 
 }
+
+

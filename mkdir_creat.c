@@ -457,106 +457,97 @@ int dir_empty(MINODE *mip){
 
 /**
  *
- * Removes a directory from our filesystem
- *
- * @param path to the directory
- * @return 0 success, -1 failure
+ * @param pip
+ * @param myino
+ * @param myname
+ * @return
  */
-int func_rmdir(char *path){
-    //Find the ino for the directory we are trying to remove
-    int ino = getino(path);
+int enter_name(MINODE *pip, int myino, char *myname) {
+    //Get the inode for the parent we are storing this entry under
+    INODE *ip = &pip->INODE; // get the inode
 
-    //Confirm existence of item @ pathname
-    if (ino == -1)
-    {
-        printf("ERROR: ino doesn't exist\n");
-        return -1;
-    }
+    //Loop over the direct blocks and look for space the enter our entry
+    for (int i = 0; i < 12; i++) {
 
-    //Get the memory inode for the item in question
-    MINODE *mip = iget(dev, ino);
+        //If we are at a block that has no information
+        if (ip->i_block[i] == 0)break;
 
-    //Confirm that we have a directory on our hands
-    if (!S_ISDIR(mip->INODE.i_mode))
-    {
-        printf("ERROR: %s is not a directory\n",path);
-        return -1;
-    }
+        //Get the block number for the data stored
+        int bno = ip->i_block[i];
 
-    //Confirm the directory is empty
-    if (dir_empty(mip) == -1)
-    {
-        printf("Cannot remove %s as it is not empty\n",path);
-        return -1;
-    }
+        //Read in that block into a buffer and search for space for entry
+        char buf[BLKSIZE];
+        get_block(pip->dev, bno, buf);
 
-    //Confirm that it is not being used by other processes
-    if (mip->refCount > 2)
-    {
-        printf("ERROR: %s is in use, the reference count > 2, refcount = %d\n", path, mip->refCount);
-        return -1;
-    }
+        //Create a dir entry pointer based on the information on the block
+        DIR *dp = (DIR *) buf;
 
-    //Check permissions
-    if (func_access(path,'w') != 1){
-        printf("Error: You do not have permission to delete this directory\n");
-        return -1;
-    }
+        //Store our current position in the buffer
+        char *cp = buf;
 
-    //Loop through blocks & deallocate space for them
-    for (int i = 0; i < 12; i++)
-    {
-        //if the block is empty go to the next block
-        if (mip->INODE.i_block[i] == 0)continue;
+        //Loop until we have gone through all of the entries on the block
+        while (cp + dp->rec_len < buf + BLKSIZE) {
+            //Increase the current position by the entry length
+            cp += dp->rec_len;
 
-        //deallocate the block
-        bdealloc(mip->dev, mip->INODE.i_block[i]);
-    }
+            //Recast to new spot
+            dp = (DIR *) cp;
+        }
 
-    //Deallocate the ino for the directory
-    idealloc(mip->dev, mip->ino);
+        //Find the amount of space remaining
+        int remainder = dp->rec_len - (4 * ((8 + dp->name_len + 3) / 4));
 
-    //Mark as dirty & write to block the changes made
-    mip->dirty = 1;
-    iput(mip);
+        //If there is sufficient space for this entry continue
+        if (remainder >= 4 * ((8 + strlen(myname) + 3) / 4)) {
+
+            //Set the record length up to be proper
+            dp->rec_len = (4 * ((8 + dp->name_len + 3) / 4));
+
+            //Go to the end and find new open entry space
+            cp += dp->rec_len;
+            dp = (DIR *) cp;
+
+            //Set up the entry with the ino, name, legnth of name, and the record size
+            dp->inode = myino;
+            dp->name_len = strlen(myname);
+            dp->rec_len = remainder;
+            strcpy(dp->name, myname);
 
 
-    //Create two strings to store the path in because they will be destroyed by dirname and basename
-    char pathStr1[256], pathStr2[256];
-    strcpy(pathStr1, path);
-    strcpy(pathStr2, path);
+            //Write to disk
+            put_block(dev, bno, buf);
+            return 0;
+        }
 
-    //Destroy the strings
-    char *parent = dirname(pathStr1);
-    char *child = basename(pathStr2);
+        //Handle when we need to allocate space for this entry
+        //Set the size of this entry
+        ip->i_size = BLKSIZE;
 
-    //Get the ino for the parent so we can remove mip from them
-    int parentINO = getino(parent);
+        //Get a new block allocated and store it at this spot
+        bno = balloc(dev);
+        ip->i_block[i] = bno;
 
-    if (parentINO >= 0){
-        //Get the parent memory node
-        MINODE *pip = iget(mip->dev, parentINO);
-
-        //Remove the directory we just got rid of from its parent
-        rm_child(pip, child);
-
-        //Decrease links since this was a directory we removed
-        pip->INODE.i_links_count--;
-
-        //Change times to NOW
-        pip->INODE.i_atime = time(0L);
-        pip->INODE.i_ctime = time(0L);
-
-        //Mark as dirty and write updates to disk
+        //Since we have changed the ino mark it as dirty
         pip->dirty = 1;
-        iput(pip);
+
+        //Read the block in from memory
+        get_block(dev, bno, buf);
+
+        //Cast our current position and entry to where we are at with this new block of data
+        dp = (DIR *) buf;
+        cp = buf;
+
+        //Store the name length, inode, record length, and name
+        dp->name_len = strlen(myname);
+        dp->inode = myino;
+        dp->rec_len = BLKSIZE;
+        strcpy(dp->name, myname);
+
+        //Write to disk
+        put_block(dev, bno, buf);
 
         //Return success
-        return 0;
-    } else {
-        printf("Error: Could not find parent inode for %s \n",path);
-        return -1;
+        return 1;
     }
-
-    return 0;
 }
+
